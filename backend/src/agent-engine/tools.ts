@@ -4,9 +4,10 @@
  */
 
 import { ethers } from "ethers";
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
-// Optional: Crypto.com AI Agent SDK (requires additional setup)
-// import { createClient, QueryOptions } from "@crypto.com/ai-agent-client";
+// Solana RPC URL
+const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
 // Crypto.com Market Data MCP Server URL
 const MCP_MARKET_DATA_URL = "https://mcp.crypto.com/market-data/mcp";
@@ -19,6 +20,7 @@ export interface AgentTools {
   hasBlockchainAccess: boolean;
   hasMarketDataAccess: boolean;
   hasSwapAccess: boolean;
+  hasSolanaAccess: boolean;
   tools: string[];
 }
 
@@ -32,6 +34,7 @@ export function determineAgentTools(description: string): AgentTools {
   let hasBlockchainAccess = false;
   let hasMarketDataAccess = false;
   let hasSwapAccess = false;
+  let hasSolanaAccess = false;
 
   // Check for blockchain-related keywords
   const blockchainKeywords = [
@@ -39,6 +42,9 @@ export function determineAgentTools(description: string): AgentTools {
     "token", "nft", "defi", "cronos", "ethereum", "address", 
     "block", "explorer", "on-chain"
   ];
+
+  // Solana keywords
+  const solanaKeywords = ["solana", "sol", "spl", "phantom", "metaplex", "anchor"];
   
   // Check for market data keywords
   const marketDataKeywords = [
@@ -53,11 +59,16 @@ export function determineAgentTools(description: string): AgentTools {
   ];
 
   // Determine tools based on description
-  if (blockchainKeywords.some(keyword => descLower.includes(keyword))) {
+  if (blockchainKeywords.some(keyword => descLower.includes(keyword)) || solanaKeywords.some(keyword => descLower.includes(keyword))) {
     hasBlockchainAccess = true;
     tools.push("blockchain_query");
     tools.push("balance_check");
     tools.push("transaction_lookup");
+    
+    if (solanaKeywords.some(k => descLower.includes(k))) {
+      hasSolanaAccess = true;
+      tools.push("solana_balance");
+    }
   }
 
   if (marketDataKeywords.some(keyword => descLower.includes(keyword))) {
@@ -78,6 +89,7 @@ export function determineAgentTools(description: string): AgentTools {
     hasBlockchainAccess,
     hasMarketDataAccess,
     hasSwapAccess,
+    hasSolanaAccess,
     tools,
   };
 }
@@ -2058,17 +2070,59 @@ async function buildTransferTransactionViaSDK(query: string): Promise<string> {
 }
 
 /**
- * Execute blockchain query using Crypto.com SDKs
- * Priority: AI Agent SDK → Developer Platform SDK
- * No RPC fallback - let Gemini/AI handle responses if SDKs can't answer
- * 
- * Priority: AI Agent SDK → Developer Platform SDK (all modules)
+ * Execute Solana blockchain query
+ */
+export async function executeSolanaQuery(query: string): Promise<string> {
+  const queryLower = query.toLowerCase();
+  
+  // Extract address (base58) from query
+  const addressMatch = query.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
+  if (!addressMatch && !queryLower.includes('latest')) {
+    return "Could not find a valid Solana address in the query.";
+  }
+  
+  const connection = new Connection(SOLANA_RPC_URL);
+  
+  if (queryLower.includes('balance')) {
+    try {
+      const address = addressMatch ? addressMatch[0] : null;
+      if (!address) return "Please provide a Solana address to check balance.";
+      
+      const pubkey = new PublicKey(address);
+      const balance = await connection.getBalance(pubkey);
+      const solBalance = balance / LAMPORTS_PER_SOL;
+      
+      return `Solana Balance for ${address}: ${solBalance.toFixed(4)} SOL`;
+    } catch (error: any) {
+      return `Error fetching Solana balance: ${error.message}`;
+    }
+  }
+  
+  if (queryLower.includes('latest block') || queryLower.includes('slot')) {
+    try {
+      const slot = await connection.getSlot();
+      return `Current Solana Slot: ${slot}\nNetwork: ${process.env.SOLANA_NETWORK || 'devnet'}`;
+    } catch (error: any) {
+      return `Error fetching Solana network info: ${error.message}`;
+    }
+  }
+  
+  return "Query type not recognized for Solana. Try 'balance' or 'latest block'.";
+}
+
+/**
+ * Execute blockchain query using Crypto.com SDKs (Cronos) or Solana RPC
  */
 export async function executeBlockchainQuery(
   client: any,
   query: string
 ): Promise<string> {
   const queryLower = query.toLowerCase();
+  
+  // Check if it's a Solana query
+  if (queryLower.includes('solana') || queryLower.includes('sol ') || queryLower.includes('sol.')) {
+    return await executeSolanaQuery(query);
+  }
   
   // Exchange, Defi, and CronosID queries are handled by AI Agent SDK
   // AI Agent SDK internally uses Developer Platform SDK and provides better formatting

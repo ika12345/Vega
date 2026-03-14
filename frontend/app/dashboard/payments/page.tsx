@@ -84,7 +84,10 @@ export default function PaymentsPage() {
 
   const fetchAgentPaymentData = async (agentId: number): Promise<PaymentData | null> => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      if (typeof window !== "undefined" && apiUrl.includes("localhost") && window.location.hostname !== "localhost") {
+        apiUrl = apiUrl.replace("localhost", window.location.hostname);
+      }
       const [agentResponse, analyticsResponse] = await Promise.all([
         fetch(`${apiUrl}/api/agents/${agentId}`),
         fetch(`${apiUrl}/api/analytics/agents/${agentId}`),
@@ -113,7 +116,10 @@ export default function PaymentsPage() {
 
   const fetchPaymentLogs = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      if (typeof window !== "undefined" && apiUrl.includes("localhost") && window.location.hostname !== "localhost") {
+        apiUrl = apiUrl.replace("localhost", window.location.hostname);
+      }
       const response = await fetch(`${apiUrl}/api/logs/payments?limit=100`);
       if (response.ok) {
         const data = await response.json();

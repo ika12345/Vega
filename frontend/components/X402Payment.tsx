@@ -57,7 +57,10 @@ export function X402Payment({
         priceUsd,
       });
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      if (typeof window !== "undefined" && apiUrl.includes("localhost") && window.location.hostname !== "localhost") {
+        apiUrl = apiUrl.replace("localhost", window.location.hostname);
+      }
       // For VVS swap, use the vvs-swap endpoint
       const resourceUrl = agentId === 999 
         ? `${apiUrl}/api/vvs-swap/execute`

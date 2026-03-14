@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1773523674072,
+    "name": "test",
+    "description": "replies hi to every message",
+    "price": 0.05,
+    "reputation": 500,
+    "developer": "9ZoFGa7YmExQTjBh6JZAconHjwppANjD5CW3yoo4cJiS",
+    "totalExecutions": 0,
+    "successfulExecutions": 0,
+    "onChainSignature": "kySAfcqjeDoXPXFof3koat9HHkyFKVGxiCmd23JCspHcs7dgou1msA97xWRV3vgt1kRN7kEPN3aURRsatHxZDjb",
+    "network": "solana-devnet"
+  }
+]

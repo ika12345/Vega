@@ -1,6 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getAllAgentsFromContract, getAgentFromContract } from "../lib/contract";
-import { ethers } from "ethers";
+import { db } from "../lib/database";
 
 const router = Router();
 
@@ -9,17 +8,16 @@ const router = Router();
  */
 router.get("/platform", async (req: Request, res: Response) => {
   try {
-    const agents = await getAllAgentsFromContract();
+    const agents = db.getAgents();
+    const executions = db.getExecutions();
     
     // Calculate platform stats
     const totalAgents = agents.length;
-    const totalExecutions = agents.reduce((sum, agent) => sum + Number(agent.totalExecutions), 0);
-    const totalSuccessfulExecutions = agents.reduce((sum, agent) => sum + Number(agent.successfulExecutions), 0);
-    const totalRevenue = agents.reduce((sum, agent) => {
-      const price = Number(agent.pricePerExecution) / 1_000_000;
-      const executions = Number(agent.successfulExecutions);
-      return sum + (price * executions);
-    }, 0);
+    const totalExecutions = executions.length;
+    const totalSuccessfulExecutions = executions.filter(e => e.success).length;
+    
+    // Revenue in SOL (0.01 SOL per execution for demo)
+    const totalRevenue = totalSuccessfulExecutions * 0.01;
     
     const successRate = totalExecutions > 0 
       ? (totalSuccessfulExecutions / totalExecutions) * 100 
@@ -32,15 +30,20 @@ router.get("/platform", async (req: Request, res: Response) => {
         totalSuccessfulExecutions,
         totalRevenue: totalRevenue.toFixed(2),
         successRate: successRate.toFixed(1),
+        network: "Solana Devnet"
       },
-      agents: agents.map(agent => ({
-        id: agent.id,
-        name: agent.name,
-        executions: Number(agent.totalExecutions),
-        successfulExecutions: Number(agent.successfulExecutions),
-        reputation: Number(agent.reputation),
-        price: Number(agent.pricePerExecution) / 1_000_000,
-      })),
+      agents: agents.map(agent => {
+        const agentExecutions = executions.filter(e => e.agentId === agent.id);
+        const agentSuccess = agentExecutions.filter(e => e.success).length;
+        return {
+          id: agent.id,
+          name: agent.name,
+          executions: agentExecutions.length,
+          successfulExecutions: agentSuccess,
+          reputation: agent.reputation || 100,
+          price: 0.01,
+        }
+      }),
     });
   } catch (error) {
     console.error("Error fetching platform analytics:", error);
@@ -57,15 +60,16 @@ router.get("/platform", async (req: Request, res: Response) => {
 router.get("/agents/:id", async (req: Request, res: Response) => {
   try {
     const agentId = parseInt(req.params.id);
-    const agent = await getAgentFromContract(agentId);
+    const agent = db.getAgent(agentId);
     
     if (!agent) {
       return res.status(404).json({ error: "Agent not found" });
     }
 
-    const totalExecutions = Number(agent.totalExecutions);
-    const successfulExecutions = Number(agent.successfulExecutions);
-    const price = Number(agent.pricePerExecution) / 1_000_000;
+    const executions = db.getExecutions({ agentId });
+    const totalExecutions = executions.length;
+    const successfulExecutions = executions.filter(e => e.success).length;
+    const price = 0.01;
     const revenue = price * successfulExecutions;
     const successRate = totalExecutions > 0 
       ? (successfulExecutions / totalExecutions) * 100 
@@ -80,8 +84,9 @@ router.get("/agents/:id", async (req: Request, res: Response) => {
         failedExecutions: totalExecutions - successfulExecutions,
         revenue: revenue.toFixed(2),
         successRate: successRate.toFixed(1),
-        reputation: Number(agent.reputation),
+        reputation: agent.reputation || 100,
         price,
+        network: agent.network || "solana"
       },
     });
   } catch (error) {

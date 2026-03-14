@@ -1,12 +1,9 @@
 import { Router, Request, Response } from "express";
-import { verifyPayment, settlePayment, generatePaymentRequiredResponse } from "../x402/facilitator";
-import { decodePaymentSignatureHeader } from "@x402/core/http";
-import { executeAgent } from "../agent-engine/executor";
-import { getAgentFromContract, executeAgentOnContract, verifyExecutionOnContract } from "../lib/contract";
 import { db } from "../lib/database";
+import { determineAgentTools, fetchMarketData, createCryptoComClient, executeBlockchainQuery } from "../agent-engine/tools";
+import { verifySolanaTransaction } from "../utils/solana";
+import { executeAgent } from "../agent-engine/executor";
 import { ethers } from "ethers";
-import { determineAgentTools, fetchMarketData, executeBlockchainQuery, createCryptoComClient } from "../agent-engine/tools";
-import { releasePaymentToDeveloper } from "../lib/contract";
 import { getVVSQuote, getTokenAddress, buildVVSSwapTransaction, getTokenDecimals } from "../lib/vvs-finance";
 
 /**
@@ -200,7 +197,7 @@ async function fetchDataInParallel(params: {
                   tokenOutAddress,
                   amountInWei.toString(),
                   amountOutMin,
-                  verification.payerAddress || "0x0000000000000000000000000000000000000000"
+                  verification.payer || "0x0000000000000000000000000000000000000000"
                 ),
                 swapQuoteInfo: {
                   amountIn,
@@ -220,7 +217,7 @@ async function fetchDataInParallel(params: {
   }
 
   // 4. Portfolio fetch (parallel)
-  if (needsPortfolio && verification.payerAddress) {
+  if (needsPortfolio && verification.payer) {
     promises.push(
       (async () => {
         try {
@@ -229,7 +226,7 @@ async function fetchDataInParallel(params: {
           if (sdk && sdk.Wallet && sdk.Token) {
             const balances: Array<{ symbol: string; balance: string; contractAddress?: string }> = [];
             
-            const nativeBalance = await sdk.Wallet.balance(verification.payerAddress);
+            const nativeBalance = await sdk.Wallet.balance(verification.payer);
             if (nativeBalance?.data?.balance) {
               balances.push({ symbol: 'CRO', balance: nativeBalance.data.balance });
             }
@@ -241,7 +238,7 @@ async function fetchDataInParallel(params: {
             
             for (const token of commonTokens) {
               try {
-                const tokenBalance = await sdk.Token.getERC20TokenBalance(verification.payerAddress, token.address);
+                const tokenBalance = await sdk.Token.getERC20TokenBalance(verification.payer, token.address);
                 
                 // Check if the SDK call was successful
                 if (!tokenBalance || tokenBalance.status === 'Error' || tokenBalance.error) {
@@ -332,7 +329,7 @@ async function fetchDataInParallel(params: {
             
             if (balances.length > 0) {
               results.portfolioData = {
-                address: verification.payerAddress,
+                address: verification.payer,
                 balances,
               };
             }
@@ -346,11 +343,11 @@ async function fetchDataInParallel(params: {
 
   // 5. Transaction history fetch (parallel) - OPTIMIZED: Faster with timeout and reduced blocks
   // OPTIMIZATION: Use payer's address automatically when user says "my transaction history"
-  if (needsHistory && verification.payerAddress) {
+  if (needsHistory && verification.payer) {
     promises.push(
       (async () => {
         try {
-          console.log(`[Chat] 📜 Fetching transaction history for ${verification.payerAddress}...`);
+          console.log(`[Chat] 📜 Fetching transaction history for ${verification.payer}...`);
           // OPTIMIZATION: Add 3 second timeout (reduced from 5s) to prevent blocking
           const timeoutPromise = new Promise<void>((resolve) => 
             setTimeout(() => {
@@ -366,7 +363,7 @@ async function fetchDataInParallel(params: {
             const txList: any[] = [];
             // OPTIMIZATION: Reduce blocks to scan from 10 to 5 for much faster response
             const blocksToCheck = Math.min(5, currentBlock);
-            const addressLower = verification.payerAddress.toLowerCase();
+            const addressLower = verification.payer.toLowerCase();
             
             // OPTIMIZATION: Fetch only the most recent 5 blocks in parallel
             const blockPromises = [];
@@ -412,7 +409,7 @@ async function fetchDataInParallel(params: {
             if (txList.length > 0) {
               txList.sort((a, b) => b.blockNumber - a.blockNumber);
               results.transactionHistory = {
-                address: verification.payerAddress,
+                address: verification.payer,
                 transactions: txList.slice(0, 10), // Limit to 10 transactions
               };
               console.log(`[Chat] ✅ Transaction history fetched: ${txList.length} transactions`);
@@ -474,142 +471,44 @@ router.post("/", chatRateLimit, validateAgentInputMiddleware, async (req: Reques
       return res.status(400).json({ error: "Input required" });
     }
 
-    // Use a unified agent ID (we'll use agent #1 as the base)
-    const UNIFIED_AGENT_ID = 1;
-    const contractAgent = await getAgentFromContract(UNIFIED_AGENT_ID);
-    if (!contractAgent) {
-      return res.status(404).json({ error: "Unified agent not found" });
-    }
-
-    const agentPrice = Number(contractAgent.pricePerExecution) / 1_000_000;
-    const escrowAddress = process.env.AGENT_ESCROW_ADDRESS || "0x4352F2319c0476607F5E1cC9FDd568246074dF14";
-    
-    // For unified chat: Get platform fee recipient from escrow contract or env var
-    // Unified chat payments should go directly to platform treasury, not to any agent developer
-    let platformFeeRecipient: string | null = null;
-    
-    // Try environment variable first
-    if (process.env.PLATFORM_FEE_RECIPIENT) {
-      platformFeeRecipient = process.env.PLATFORM_FEE_RECIPIENT;
-      console.log(`[Chat] Using platform fee recipient from env: ${platformFeeRecipient}`);
-    } else {
-      // Try reading from escrow contract
-      // Note: platformFeeRecipient is a public immutable variable, accessed as a property (not a function)
-      try {
-        const { getAgentEscrow } = require("../lib/contract");
-        const escrowContract = getAgentEscrow();
-        if (escrowContract) {
-          // Public variables in Solidity are accessed without parentheses in ethers.js
-          platformFeeRecipient = await escrowContract.platformFeeRecipient;
-          console.log(`[Chat] Platform fee recipient from escrow contract: ${platformFeeRecipient}`);
-        }
-      } catch (error) {
-        console.warn(`[Chat] Could not read platform fee recipient from escrow:`, error);
-      }
-    }
-    
-    // Use platform fee recipient for unified chat, fallback to escrow if not available
-    // This ensures unified chat revenue goes to platform, not to contract creator/agent developer
-    const unifiedChatPayTo = platformFeeRecipient || escrowAddress;
-    if (platformFeeRecipient) {
-      console.log(`[Chat] ✅ Unified chat payments will go to platform fee recipient: ${unifiedChatPayTo}`);
-    } else {
-      console.warn(`[Chat] ⚠️  No platform fee recipient found, using escrow address: ${unifiedChatPayTo}`);
-    }
+    // For unified chat: Use fixed price 0.01 SOL for demo
+    const agentPrice = 0.01;
+    const registryWallet = process.env.SOLANA_REGISTRY_WALLET || "4hpxkCZuj5WvNtStmPZq8D1WheFZwjAAGyqjQUaeX4e9";
 
     // Check for payment
-    const paymentHeader = req.headers["x-payment"] || 
-                          req.headers["x-payment-signature"] || 
-                          req.headers["payment-signature"];
+    const solanaSignature = req.headers["x-solana-signature"] as string || req.body.paymentHash;
 
-    if (!paymentHash && !paymentHeader) {
-      const paymentRequired = await generatePaymentRequiredResponse({
-        url: req.url || "",
-        description: `Chat message`,
-        priceUsd: agentPrice,
-        payTo: unifiedChatPayTo, // Use platform fee recipient for unified chat
-        testnet: true,
-      });
+    if (!solanaSignature) {
       return res.status(402).json({
         error: "Payment required",
-        paymentRequired: paymentRequired,
+        message: "Please provide a Solana transaction signature for 0.01 SOL",
+        priceUsd: 0.10, // For UI display
+        priceSol: 0.01,
+        payTo: registryWallet
       });
     }
 
-    // Parse and verify payment
-    const paymentHeaderValue = Array.isArray(paymentHeader) 
-      ? paymentHeader[0] 
-      : paymentHeader;
+    // Verify Solana payment
+    console.log(`[Chat] Verifying Solana payment: ${solanaSignature}`);
     
-    if (!paymentHeaderValue || typeof paymentHeaderValue !== "string") {
-      return res.status(402).json({
-        error: "Payment signature header missing",
-        paymentRequired: true,
-      });
-    }
+    const verification = await verifySolanaTransaction(solanaSignature, 0.01 * 10**9);
 
-    let paymentPayload;
-    try {
-      paymentPayload = decodePaymentSignatureHeader(paymentHeaderValue);
-    } catch (parseError) {
-      return res.status(402).json({
-        error: "Invalid payment signature format",
-        details: parseError instanceof Error ? parseError.message : String(parseError),
-      });
-    }
-
-    // Verify payment
-    let verification;
-    try {
-      verification = await verifyPayment(paymentPayload, {
-        priceUsd: agentPrice,
-        payTo: unifiedChatPayTo, // Use platform fee recipient for unified chat
-        testnet: true,
-      }, paymentHeaderValue);
-    } catch (verifyError) {
-      return res.status(402).json({
-        error: "Payment verification failed",
-        details: verifyError instanceof Error ? verifyError.message : String(verifyError),
-      });
-    }
 
     if (!verification.valid) {
       return res.status(402).json({
-        error: verification.invalidReason || "Payment verification failed",
+        error: "Payment verification failed",
+        details: verification.error,
         paymentRequired: true,
       });
     }
 
-    // Convert paymentHash to bytes32
-    let paymentHashBytes32: string;
-    if (paymentHash && paymentHash.startsWith("0x")) {
-      paymentHashBytes32 = paymentHash;
-    } else if (paymentPayload && 'hash' in paymentPayload && paymentPayload.hash) {
-      paymentHashBytes32 = paymentPayload.hash as string;
-    } else {
-      paymentHashBytes32 = ethers.keccak256(ethers.toUtf8Bytes(paymentHeaderValue || ""));
-    }
-
-    // Check if payment hash has already been used (prevent double-spending for unified chat)
-    // Since we skip contract execution for unified chat, we need to check database
-    // Also check if payment was used in previous executions (before we removed contract execution)
-    const existingPayment = db.getPayments({ paymentHash: paymentHashBytes32 });
-    const existingExecution = db.getExecutions({ paymentHash: paymentHashBytes32 });
-    
-    if (existingPayment.length > 0 && existingPayment[0].status !== "failed" && existingPayment[0].status !== "refunded") {
-      console.warn(`[Chat] ⚠️ Payment hash ${paymentHashBytes32} has already been used (found in payments)`);
-      return res.status(402).json({
-        error: "Payment already used",
-        details: "This payment has already been used. Please create a new payment to continue.",
-        paymentRequired: true,
-      });
-    }
+    // Check if payment hash has already been used
+    const existingExecution = db.getExecutions({ paymentHash: solanaSignature });
     
     if (existingExecution && existingExecution.length > 0) {
-      console.warn(`[Chat] ⚠️ Payment hash ${paymentHashBytes32} has already been used (found in executions)`);
+      console.warn(`[Chat] ⚠️ Signature ${solanaSignature} already used`);
       return res.status(402).json({
         error: "Payment already used",
-        details: "This payment has already been used in a previous execution. Please create a new payment to continue.",
         paymentRequired: true,
       });
     }
@@ -632,7 +531,7 @@ router.post("/", chatRateLimit, validateAgentInputMiddleware, async (req: Reques
     const hasContractAddress = input.match(/0x[a-fA-F0-9]{40}/);
     // Match if: has balance keywords AND (has contract address OR mentions token/usdc/usdt/cro/vvs OR has "contract" keyword)
     const mentionsToken = /(?:token|usdc|usdt|cro|vvs|erc20|erc-20|contract)/i.test(input);
-    const needsTokenBalance = hasTokenBalanceKeywords && (hasContractAddress || mentionsToken) && verification.payerAddress;
+    const needsTokenBalance = hasTokenBalanceKeywords && (hasContractAddress || mentionsToken) && verification.payer;
     // Detect transaction history queries: "my transactions", "transaction history", "recent transactions"
     // Also detect when user says "show my transaction history" or similar
     const needsHistory = /(?:my transactions|transaction history|recent transactions|tx history|last transactions|show my tx|show.*transaction)/i.test(input);
@@ -740,7 +639,7 @@ router.post("/", chatRateLimit, validateAgentInputMiddleware, async (req: Reques
             contractAddress = allAddresses[allAddresses.length - 1]; // Last address is likely the contract
           } else if (allAddresses && allAddresses.length === 1) {
             // Single address - could be wallet or contract, but if it's not the payer's address, assume it's a contract
-            if (verification && verification.payerAddress && allAddresses[0].toLowerCase() !== verification.payerAddress.toLowerCase()) {
+            if (verification && verification.payer && allAddresses[0].toLowerCase() !== verification.payer.toLowerCase()) {
               contractAddress = allAddresses[0];
             }
           }
@@ -762,8 +661,8 @@ router.post("/", chatRateLimit, validateAgentInputMiddleware, async (req: Reques
         
         // If contract address is explicitly provided, use it
         if (contractAddress) {
-          if (verification && verification.payerAddress && !balanceQuery.includes(verification.payerAddress)) {
-            balanceQuery = `${input} address ${verification.payerAddress} contract ${contractAddress}`;
+          if (verification && verification.payer && !balanceQuery.includes(verification.payer)) {
+            balanceQuery = `${input} address ${verification.payer} contract ${contractAddress}`;
           } else if (!balanceQuery.includes(contractAddress)) {
             // Wallet address already in query, just add contract
             balanceQuery = `${input} contract ${contractAddress}`;
@@ -771,13 +670,13 @@ router.post("/", chatRateLimit, validateAgentInputMiddleware, async (req: Reques
           console.log(`[Chat] ℹ️ Using provided contract address: ${contractAddress}`);
         } 
         // If no contract address but token name is mentioned, use known contract
-        else if (!contractAddress && tokenName && knownTokens[tokenName] && verification && verification.payerAddress && !balanceQuery.includes(verification.payerAddress)) {
-          balanceQuery = `${input} address ${verification.payerAddress} contract ${knownTokens[tokenName]}`;
+        else if (!contractAddress && tokenName && knownTokens[tokenName] && verification && verification.payer && !balanceQuery.includes(verification.payer)) {
+          balanceQuery = `${input} address ${verification.payer} contract ${knownTokens[tokenName]}`;
           console.log(`[Chat] ℹ️ Using known contract for ${tokenName.toUpperCase()}: ${knownTokens[tokenName]}`);
         }
         // If no contract address provided, add wallet address (SDK will return native balance or ask for contract)
-        else if (verification && verification.payerAddress && !balanceQuery.includes(verification.payerAddress)) {
-          balanceQuery = `${input} address ${verification.payerAddress}`;
+        else if (verification && verification.payer && !balanceQuery.includes(verification.payer)) {
+          balanceQuery = `${input} address ${verification.payer}`;
         }
         
         console.log(`[Chat] 🔍 Querying token balance with: "${balanceQuery}"`);
@@ -847,9 +746,9 @@ router.post("/", chatRateLimit, validateAgentInputMiddleware, async (req: Reques
         } else if (hasOpenAIKey && !isExchangeQuery) {
           // Priority 1: Try AI Agent SDK first if OPENAI_API_KEY is available (but skip for exchange queries)
           // If query doesn't have an address, try to use payer's address for balance/transaction queries
-          if ((input.toLowerCase().includes("balance") || input.toLowerCase().includes("transaction")) && !input.toLowerCase().includes("0x") && verification.payerAddress) {
-            console.log(`[Chat] ℹ️ No address in query, using payer's address: ${verification.payerAddress}`);
-            enhancedInput = `${input} for address ${verification.payerAddress}`;
+          if ((input.toLowerCase().includes("balance") || input.toLowerCase().includes("transaction")) && !input.toLowerCase().includes("0x") && verification.payer) {
+            console.log(`[Chat] ℹ️ No address in query, using payer's address: ${verification.payer}`);
+            enhancedInput = `${input} for address ${verification.payer}`;
           }
           const blockchainClient = createCryptoComClient();
           if (blockchainClient) {
@@ -956,9 +855,9 @@ router.post("/", chatRateLimit, validateAgentInputMiddleware, async (req: Reques
         // For other blockchain queries (not Exchange/Defi/CronosID), use AI Agent SDK if available
         if (!directSDKResult && !isExchangeQuery && !isDefiQuery && !isCronosIdQuery) {
           // If query doesn't have an address, try to use payer's address for balance queries
-          if (input.toLowerCase().includes("balance") && !input.toLowerCase().includes("0x") && verification.payerAddress) {
-            console.log(`[Chat] ℹ️ No address in balance query, using payer's address: ${verification.payerAddress}`);
-            enhancedInput = `${input} for address ${verification.payerAddress}`;
+          if (input.toLowerCase().includes("balance") && !input.toLowerCase().includes("0x") && verification.payer) {
+            console.log(`[Chat] ℹ️ No address in balance query, using payer's address: ${verification.payer}`);
+            enhancedInput = `${input} for address ${verification.payer}`;
           }
           const blockchainClient = createCryptoComClient();
           if (blockchainClient) {
@@ -1196,121 +1095,47 @@ When users ask about token swaps:
 User Input:
 `;
 
-    // SKIP contract execution for unified chat to avoid counting toward agent 1's metrics
-    // Unified chat should NOT increment any agent's totalExecutions or affect reputation
-    // We still track in database for analytics, but don't create on-chain execution records
-    console.log(`[Chat] ℹ️  Skipping contract execution for unified chat (does not affect agent metrics)`);
-    console.log(`[Chat] Using payment hash for tracking: ${paymentHashBytes32}`);
-    
-    // Generate a unique execution ID for database tracking (not on-chain)
-    // Use timestamp + hash to ensure uniqueness
-    const contractExecutionId = parseInt(
-      `9${Date.now().toString().slice(-8)}${paymentHashBytes32.slice(2, 10)}`,
-      16
-    ) % 2147483647; // Keep within int32 range for database
-
-    // Log payment
-    try {
-      db.addPayment({
-        paymentHash: paymentHashBytes32,
-        agentId: UNIFIED_AGENT_ID,
-        agentName: "Unified Chat Agent",
-        userId: verification.payerAddress || "unknown",
-        amount: agentPrice,
-        status: "pending",
-        timestamp: Date.now(),
-        executionId: contractExecutionId,
-      });
-      console.log(`[Chat] ✅ Payment logged to database`);
-    } catch (dbError) {
-      console.warn(`[Chat] ⚠️ Failed to log payment to database:`, dbError);
-      // Continue execution even if DB logging fails
-    }
-
-    // Execute with enhanced input
+    const UNIFIED_AGENT_ID = 1;
     const enhancedInputWithData = enhancedInput + realDataContext;
     
     console.log(`[Chat] Executing agent with prompt (Agent ID: ${UNIFIED_AGENT_ID})...`);
-    console.log(`[Chat] Input length: ${enhancedInputWithData.length}, System prompt length: ${systemPrompt.length}`);
     
-    // Use a special execution function that accepts custom prompt
+    // Execute agent
     let result;
     try {
       result = await executeAgentWithPrompt(UNIFIED_AGENT_ID, enhancedInputWithData, systemPrompt);
       console.log(`[Chat] ✅ Agent execution successful: ${result.success ? "SUCCESS" : "FAILED"}`);
     } catch (execError) {
       console.error("[Chat] ❌ Agent execution failed:", execError);
-      // Provide user-friendly error messages
-      let errorMessage = "Agent execution failed";
-      if (execError instanceof Error) {
-        const errorMsg = execError.message;
-        if (errorMsg.includes("429") || errorMsg.includes("quota") || errorMsg.includes("rate limit")) {
-          errorMessage = "AI service is currently rate-limited. Please try again in a few minutes. If this persists, the free tier quota may be exhausted.";
-        } else if (errorMsg.includes("RateLimitError")) {
-          errorMessage = "AI service rate limit exceeded. Please wait a moment and try again.";
-        } else {
-          errorMessage = `Agent execution failed: ${errorMsg}`;
-        }
-      }
-      // Still try to verify execution on contract even if agent execution failed
       result = {
-        output: errorMessage,
+        output: "Agent execution failed: " + (execError instanceof Error ? execError.message : String(execError)),
         success: false,
       };
     }
     
-    // Log execution to database (for analytics/tracking)
-    // NOTE: We do NOT verify on contract for unified chat to avoid counting toward agent 1's metrics
+    // Log execution to database
     try {
       db.addExecution({
-        executionId: contractExecutionId,
+        executionId: Date.now(),
         agentId: UNIFIED_AGENT_ID,
         agentName: "Unified Chat Agent",
-        userId: verification.payerAddress || "unknown",
-        paymentHash: paymentHashBytes32,
+        userId: verification.payer || "unknown",
+        paymentHash: solanaSignature,
         input: enhancedInputWithData,
         output: result.output || "",
         success: result.success,
         timestamp: Date.now(),
-        verified: false, // Unified chat executions are not verified on contract
+        verified: true,
       });
-      console.log(`[Chat] ✅ Execution logged to database (unified chat - not counted toward agent metrics)`);
     } catch (dbError) {
-      console.warn(`[Chat] ⚠️ Failed to log execution to database:`, dbError);
-      // Continue execution even if DB logging fails
-    }
-
-    // SKIP contract verification for unified chat
-    // Unified chat should NOT count toward any agent's execution count or reputation
-    // We still log to database for analytics, but don't update contract metrics
-    console.log(`[Chat] ℹ️  Skipping contract verification for unified chat (does not affect agent metrics)`);
-
-    // Settle payment if successful
-    if (result.success) {
-      try {
-        // For unified chat: Settle directly to platform fee recipient (not escrow)
-        // This ensures unified chat revenue goes to the platform, not to any agent developer
-        await settlePayment(paymentPayload, {
-          priceUsd: agentPrice,
-          payTo: unifiedChatPayTo, // Platform fee recipient for unified chat
-          testnet: true,
-        }, paymentHeaderValue);
-        console.log(`[Chat] ✅ Payment settled directly to platform fee recipient: ${unifiedChatPayTo}`);
-        console.log(`[Chat] ℹ️  Unified chat revenue goes to platform, not to any agent developer`);
-        db.updatePayment(paymentHashBytes32, { status: "settled" });
-      } catch (settleError) {
-        console.error("[Chat] Payment settlement error:", settleError);
-        db.updatePayment(paymentHashBytes32, { status: "failed" });
-      }
-    } else {
-      db.updatePayment(paymentHashBytes32, { status: "refunded" });
+      console.warn(`[Chat] ⚠️ Failed to log execution:`, dbError);
     }
 
     const responseData: any = {
-      executionId: contractExecutionId,
+      executionId: Date.now(),
       output: result.output,
       success: result.success,
-      payerAddress: verification.payerAddress,
+      payerAddress: verification.payer,
     };
 
     // Include swap transaction data if available

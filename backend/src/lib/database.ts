@@ -1,6 +1,5 @@
 /**
- * Simple JSON file-based database for execution logs
- * Stores execution history with timestamps for analytics
+ * Simple JSON file-based database for execution logs and agent registry
  */
 
 import fs from "fs";
@@ -9,10 +8,24 @@ import path from "path";
 const DB_DIR = path.join(process.cwd(), "data");
 const EXECUTIONS_FILE = path.join(DB_DIR, "executions.json");
 const PAYMENTS_FILE = path.join(DB_DIR, "payments.json");
+const AGENTS_FILE = path.join(DB_DIR, "agents.json");
 
 // Ensure data directory exists
 if (!fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
+export interface Agent {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  reputation: number;
+  developer: string;
+  totalExecutions: number;
+  successfulExecutions: number;
+  onChainSignature?: string;
+  network?: string;
 }
 
 export interface ExecutionLog {
@@ -80,7 +93,59 @@ function writePayments(payments: PaymentLog[]): void {
   }
 }
 
+function readAgents(): Agent[] {
+  try {
+    if (fs.existsSync(AGENTS_FILE)) {
+      const data = fs.readFileSync(AGENTS_FILE, "utf-8");
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error("Error reading agents file:", error);
+  }
+  return [];
+}
+
+function writeAgents(agents: Agent[]): void {
+  try {
+    fs.writeFileSync(AGENTS_FILE, JSON.stringify(agents, null, 2));
+  } catch (error) {
+    console.error("Error writing agents file:", error);
+  }
+}
+
 export const db = {
+  // Agent Registry
+  getAgents(): Agent[] {
+    return readAgents();
+  },
+
+  getAgent(id: number): Agent | undefined {
+    return readAgents().find(a => a.id === id);
+  },
+
+  addAgent(agent: Agent): void {
+    const agents = readAgents();
+    agents.push(agent);
+    writeAgents(agents);
+  },
+
+  updateAgentMetrics(id: number, success: boolean): void {
+    const agents = readAgents();
+    const index = agents.findIndex(a => a.id === id);
+    if (index !== -1) {
+      agents[index].totalExecutions += 1;
+      if (success) {
+        agents[index].successfulExecutions += 1;
+        // Increase reputation slightly on success
+        agents[index].reputation = Math.min(1000, agents[index].reputation + 2);
+      } else {
+        // Decrease reputation slightly on failure
+        agents[index].reputation = Math.max(0, agents[index].reputation - 5);
+      }
+      writeAgents(agents);
+    }
+  },
+
   // Execution logs
   addExecution(log: ExecutionLog): void {
     const executions = readExecutions();

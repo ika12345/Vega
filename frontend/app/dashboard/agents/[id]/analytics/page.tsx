@@ -29,7 +29,10 @@ export default function AgentAnalyticsPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      if (typeof window !== "undefined" && apiUrl.includes("localhost") && window.location.hostname !== "localhost") {
+        apiUrl = apiUrl.replace("localhost", window.location.hostname);
+      }
       const response = await fetch(`${apiUrl}/api/analytics/agents/${agentId}`);
       if (response.ok) {
         const data = await response.json();
@@ -44,7 +47,10 @@ export default function AgentAnalyticsPage() {
 
   const fetchTimeStats = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      if (typeof window !== "undefined" && apiUrl.includes("localhost") && window.location.hostname !== "localhost") {
+        apiUrl = apiUrl.replace("localhost", window.location.hostname);
+      }
       const price = Number(agent?.pricePerExecution || 0) / 1_000_000;
       
       const [todayRes, weekRes, monthRes] = await Promise.all([

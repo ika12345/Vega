@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "ElectroVault — Pay-per-use AI Agents powered by x402 micropayments on Cronos.",
 };
 
+import { FundingAssistant } from "@/components/FundingAssistant";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -22,7 +24,10 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers cookies={cookieHeader}>{children}</Providers>
+        <Providers cookies={cookieHeader}>
+          {children}
+          <FundingAssistant />
+        </Providers>
       </body>
     </html>
   );

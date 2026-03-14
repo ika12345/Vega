@@ -1,7 +1,5 @@
 "use client";
 
-import { useReadContract, useReadContracts } from "wagmi";
-import { AGENT_REGISTRY_ABI, getContractAddresses } from "@/lib/contracts";
 import { useAgents } from "./useAgents";
 import { useMemo } from "react";
 
@@ -14,19 +12,7 @@ export interface PlatformStats {
 }
 
 export function usePlatformStats() {
-  const { agentRegistry } = getContractAddresses();
   const { agents } = useAgents();
-
-  // Get nextExecutionId (total executions)
-  const { data: nextExecutionId } = useReadContract({
-    address: agentRegistry as `0x${string}`,
-    abi: AGENT_REGISTRY_ABI,
-    functionName: "nextExecutionId",
-    query: {
-      enabled: agentRegistry !== "0x..." && agentRegistry !== "0x",
-      refetchInterval: 5000,
-    },
-  });
 
   // Calculate stats from contract data
   const stats = useMemo<PlatformStats>(() => {

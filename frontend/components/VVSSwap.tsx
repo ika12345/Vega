@@ -60,7 +60,10 @@ export function VVSSwap() {
   const [swapError, setSwapError] = useState<string | null>(null);
   const [paymentHash, setPaymentHash] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  if (typeof window !== "undefined" && apiUrl.includes("localhost") && window.location.hostname !== "localhost") {
+    apiUrl = apiUrl.replace("localhost", window.location.hostname);
+  }
 
   const handleGetQuote = async () => {
     if (!amountIn || parseFloat(amountIn) <= 0) {

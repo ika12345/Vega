@@ -1,48 +1,46 @@
 "use client";
 
-import { wagmiAdapter, projectId, cronosTestnet, cronosMainnet } from './config'
-import { createAppKit } from '@reown/appkit/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import React, { type ReactNode } from 'react'
-import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
+import React, { useMemo, type ReactNode } from 'react';
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { 
+    PhantomWalletAdapter,
+    SolflareWalletAdapter,
+} from '@solana/wallet-adapter-wallets';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { clusterApiUrl } from '@solana/web3.js';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient()
+// Default styles that can be overridden by your app
+require('@solana/wallet-adapter-react-ui/styles.css');
 
-if (!projectId) {
-  console.warn('WalletConnect Project ID is not defined. Wallet connection features will be limited. Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in .env.local')
-}
+const queryClient = new QueryClient();
 
-const metadata = {
-  name: "ElectroVault",
-  description: "Pay-per-use AI Agents powered by x402 micropayments on Cronos.",
-  url: typeof window !== 'undefined' ? window.location.origin : "https://onechat.app",
-  icons: ["https://avatars.githubusercontent.com/u/179229932"]
-}
+export function Providers({ children }: { children: ReactNode; cookies?: string | null }) {
+    // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'.
+    const network = WalletAdapterNetwork.Devnet;
 
-const modal = createAppKit({
-  adapters: [wagmiAdapter],
-  projectId,
-  networks: [cronosTestnet, cronosMainnet], // Support both testnet and mainnet
-  metadata: metadata,
-  features: {
-    analytics: true,
-  },
-  themeMode: 'dark'
-})
+    // You can also provide a custom RPC endpoint.
+    const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 
-export function Providers({ children, cookies }: { children: ReactNode; cookies?: string | null }) {
-  // Safely parse cookies - handle null or empty strings
-  let initialState;
-  try {
-    initialState = cookies ? cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies) : undefined;
-  } catch (error) {
-    console.warn('Failed to parse cookies for wagmi initialState:', error);
-    initialState = undefined;
-  }
-  
-  return (
-    <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </WagmiProvider>
-  )
+    const wallets = useMemo(
+        () => [
+            new PhantomWalletAdapter(),
+            new SolflareWalletAdapter(),
+        ],
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [network]
+    );
+
+    return (
+        <ConnectionProvider endpoint={endpoint}>
+            <WalletProvider wallets={wallets} autoConnect>
+                <WalletModalProvider>
+                    <QueryClientProvider client={queryClient}>
+                        {children}
+                    </QueryClientProvider>
+                </WalletModalProvider>
+            </WalletProvider>
+        </ConnectionProvider>
+    );
 }

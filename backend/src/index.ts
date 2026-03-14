@@ -11,6 +11,7 @@ import logsRouter from "./api/logs";
 import chatRouter from "./api/chat";
 import healthRouter from "./api/health";
 import vvsSwapRouter from "./api/vvs-swap";
+import fundingRouter from "./api/funding";
 import { initializeFacilitator } from "./x402/facilitator";
 import { apiRateLimit } from "./middleware/rateLimit";
 
@@ -39,6 +40,7 @@ app.use("/api/analytics", analyticsRouter);
 app.use("/api/logs", logsRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/vvs-swap", vvsSwapRouter);
+app.use("/api/funding", fundingRouter);
 
 // Initialize x402 facilitator on server startup
 async function startServer() {

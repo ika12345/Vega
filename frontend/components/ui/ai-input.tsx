@@ -55,6 +55,11 @@ export function AIInput({
   const languageMenuRef = useRef<HTMLDivElement>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Use controlled value if provided, otherwise use internal state
   const inputValue = controlledValue !== undefined ? controlledValue : internalValue;
   const setInputValue = controlledOnChange || setInternalValue;
@@ -383,7 +388,7 @@ export function AIInput({
     }
   };
 
-  const isSpeechSupported = typeof window !== "undefined" && 
+  const isSpeechSupported = mounted && typeof window !== "undefined" && 
     ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   return (

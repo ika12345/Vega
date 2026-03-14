@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useChainId, useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from "wagmi";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletConnect } from "@/components/WalletConnect";
-import { X402Payment } from "@/components/X402Payment";
+import { SolanaPayment } from "@/components/SolanaPayment";
 import { useQueryClient } from "@tanstack/react-query";
 import TetrisLoading from "@/components/ui/tetris-loader";
 import { Send, Bot, Loader2, ArrowRightLeft, ExternalLink, Wallet, History, TrendingUp, X } from "lucide-react";
@@ -49,13 +49,9 @@ interface Message {
 }
 
 export default function ChatPage() {
-  const { address, isConnected } = useAccount();
-  const chainId = useChainId();
-  const { switchChain } = useSwitchChain();
-  const { sendTransaction, data: swapTxHash, isPending: isSwapPending, error: swapError } = useSendTransaction();
-  const { isLoading: isSwapConfirming, isSuccess: isSwapConfirmed } = useWaitForTransactionReceipt({
-    hash: swapTxHash,
-  });
+  const { publicKey } = useWallet();
+  const address = publicKey?.toBase58();
+  const isConnected = !!publicKey;
   const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -86,32 +82,15 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Show swap errors
-  useEffect(() => {
-    if (swapError) {
-      console.error("[Swap] Swap error from useSendTransaction:", swapError);
-      // Wagmi/viem errors can have different structures
-      const errorMessage = 
-        (swapError as any)?.message || 
-        (swapError as any)?.shortMessage || 
-        (swapError as any)?.cause?.message ||
-        (typeof swapError === 'string' ? swapError : String(swapError)) ||
-        "Failed to execute swap";
-      alert(`Swap Error: ${errorMessage}`);
-    }
-  }, [swapError]);
 
-  const handlePaymentComplete = (hash: string) => {
-    setPaymentHash(hash);
+
+  const handlePaymentComplete = (signature: string) => {
+    setPaymentHash(signature);
     setShowPayment(false);
     setPaymentError(null);
-    // Get payment header from sessionStorage
-    const paymentHeader = sessionStorage.getItem(`payment_1`);
-    if (paymentHeader && typeof window !== "undefined") {
-      // Store for chat endpoint
-      sessionStorage.setItem(`payment_chat`, paymentHeader);
-      // Also store the hash alongside the header for consistency
-      sessionStorage.setItem(`payment_chat_hash`, hash);
+    
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(`payment_chat_hash`, signature);
     }
     
     // Auto-send pending message if exists
@@ -138,15 +117,21 @@ export default function ChatPage() {
     setExecuting(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      if (typeof window !== "undefined" && apiUrl.includes("localhost") && window.location.hostname !== "localhost") {
+        apiUrl = apiUrl.replace("localhost", window.location.hostname);
+      }
       
-      // CRITICAL: Each message requires a NEW payment
       // Check if we have a valid payment, if not, require a new one
-      const paymentHeader = sessionStorage.getItem(`payment_chat`) || sessionStorage.getItem(`payment_1`) || "";
-      const storedHash = sessionStorage.getItem(`payment_chat_hash`) || sessionStorage.getItem(`payment_1_hash`);
+      const storedHash = sessionStorage.getItem(`payment_chat_hash`);
+      
+      let hashToSend: string | null = paymentHash;
+      if (!hashToSend && typeof window !== "undefined") {
+        hashToSend = storedHash;
+      }
       
       // If no payment found, require a new payment
-      if (!paymentHeader && !paymentHash && !storedHash) {
+      if (!hashToSend) {
         console.log("[Chat] No payment found - requiring new payment");
         setPendingMessage(messageInput);
         setShowPayment(true);
@@ -154,27 +139,9 @@ export default function ChatPage() {
         return;
       }
       
-      // Get payment hash - try state first, then sessionStorage, then compute from header
-      let hashToSend: string | null = paymentHash;
-      if (!hashToSend && typeof window !== "undefined") {
-        // Try to get from sessionStorage (stored when payment completed)
-        hashToSend = storedHash;
-      }
-      
-      // If still null, compute from payment header (same method as backend)
-      if (!hashToSend && paymentHeader) {
-        try {
-          hashToSend = keccak256(toBytes(paymentHeader));
-          console.log("[Chat] ✅ Computed payment hash from header:", hashToSend);
-        } catch (error) {
-          console.warn("[Chat] ⚠️ Failed to compute payment hash from header:", error);
-        }
-      }
-      
       console.log("[Chat] Payment details:", {
-        hasHeader: !!paymentHeader,
-        hasHash: !!hashToSend,
-        hashSource: paymentHash ? "state" : (storedHash ? "sessionStorage" : "computed"),
+        hashToSend,
+        hashSource: paymentHash ? "state" : "sessionStorage",
       });
       
       // Use unified chat endpoint
@@ -182,11 +149,10 @@ export default function ChatPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(paymentHeader && { "X-PAYMENT": paymentHeader }),
+          "x-solana-signature": hashToSend,
         },
         body: JSON.stringify({
           input: messageInput,
-          paymentHash: hashToSend,
         }),
       });
 
@@ -196,11 +162,8 @@ export default function ChatPage() {
         setShowPayment(true);
         setPaymentHash(null);
         if (typeof window !== "undefined") {
-          // Clear all payment data when payment is required (payment was used or invalid)
-          sessionStorage.removeItem(`payment_chat`);
+          // Clear all payment data when payment is required
           sessionStorage.removeItem(`payment_chat_hash`);
-          sessionStorage.removeItem(`payment_1`);
-          sessionStorage.removeItem(`payment_1_hash`);
         }
         return;
       }
@@ -306,106 +269,10 @@ export default function ChatPage() {
   };
 
   const executeSwap = async (swapTx: { to: string; data: string; value?: string }, swapQuote?: { network: string }) => {
-    console.log("[Swap] executeSwap called", { swapTx, swapQuote, isConnected, address, chainId });
-    
-    if (!isConnected || !address) {
-      alert("Please connect your wallet first");
-      return;
-    }
-
-    // CRITICAL: Check if wallet is on the correct network for the swap
-    // Block transaction if on wrong network to prevent executing on wrong chain
-    if (swapQuote?.network === "Mainnet" && chainId !== 25) {
-      const switchToMainnet = confirm(
-        `⚠️ WRONG NETWORK ⚠️\n\n` +
-        `This swap is for Cronos Mainnet (Chain ID: 25), but your wallet is on Chain ID ${chainId}.\n\n` +
-        `If you proceed, the transaction will execute on the WRONG network and will FAIL.\n\n` +
-        `Would you like to switch to Cronos Mainnet now?`
-      );
-      
-      if (switchToMainnet) {
-        try {
-          await switchChain({ chainId: 25 });
-          // Give user time to approve the network switch in their wallet
-          alert("Please approve the network switch in your wallet, then click the swap button again.");
-          return; // Exit - user needs to click button again after switching
-        } catch (error) {
-          console.error("[Swap] Failed to switch chain:", error);
-          alert("Failed to switch network. Please manually switch to Cronos Mainnet (Chain ID: 25) in your wallet, then try again.");
-          return;
-        }
-      } else {
-        alert("❌ Swap blocked. You must be on Cronos Mainnet (Chain ID: 25) to execute this swap.\n\nPlease switch your wallet network and try again.");
-        return;
-      }
-    } else if (swapQuote?.network === "Testnet" && chainId !== 338) {
-      const switchToTestnet = confirm(
-        `⚠️ WRONG NETWORK ⚠️\n\n` +
-        `This swap is for Cronos Testnet (Chain ID: 338), but your wallet is on Chain ID ${chainId}.\n\n` +
-        `Would you like to switch to Cronos Testnet now?`
-      );
-      
-      if (switchToTestnet) {
-        try {
-          await switchChain({ chainId: 338 });
-          alert("Please approve the network switch in your wallet, then click the swap button again.");
-          return;
-        } catch (error) {
-          console.error("[Swap] Failed to switch chain:", error);
-          alert("Failed to switch network. Please manually switch to Cronos Testnet (Chain ID: 338) in your wallet, then try again.");
-          return;
-        }
-      } else {
-        alert("❌ Swap blocked. You must be on Cronos Testnet (Chain ID: 338) to execute this swap.\n\nPlease switch your wallet network and try again.");
-        return;
-      }
-    }
-
-    // Validate swap transaction data
-    if (!swapTx || !swapTx.to || !swapTx.data) {
-      console.error("[Swap] Invalid swap transaction data:", swapTx);
-      alert("Invalid swap transaction data. Please try requesting a new quote.");
-      return;
-    }
-
-    // Validate addresses and data format
-    if (!swapTx.to.startsWith('0x') || swapTx.to.length !== 42) {
-      console.error("[Swap] Invalid 'to' address:", swapTx.to);
-      alert("Invalid swap transaction address. Please try requesting a new quote.");
-      return;
-    }
-
-    if (!swapTx.data.startsWith('0x')) {
-      console.error("[Swap] Invalid transaction data:", swapTx.data);
-      alert("Invalid swap transaction data format. Please try requesting a new quote.");
-      return;
-    }
-    
-    const contractParams: any = {
-      to: swapTx.to as `0x${string}`,
-      data: swapTx.data as `0x${string}`,
-    };
-    if (swapTx.value) {
-      try {
-        contractParams.value = BigInt(swapTx.value);
-      } catch (error) {
-        console.error("[Swap] Invalid value:", swapTx.value, error);
-        alert("Invalid swap amount. Please try requesting a new quote.");
-        return;
-      }
-    }
-    
-    console.log("[Swap] Calling sendTransaction with params:", contractParams);
-    try {
-      // sendTransaction is a mutation function from wagmi - it doesn't return a promise
-      // Errors are handled via the error property from useSendTransaction hook
-      sendTransaction(contractParams);
-    } catch (error) {
-      console.error("[Swap] Error calling sendTransaction:", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      alert(`Failed to initiate swap: ${errorMessage}`);
-    }
+    alert("Token swapping has not yet been migrated to Solana. This feature is coming soon!");
   };
+
+
 
   return (
     <div className="h-screen bg-black text-neutral-50 flex flex-col overflow-hidden">
@@ -703,13 +570,13 @@ export default function ChatPage() {
                       </div>
 
                       {/* Network Warning */}
-                      {message.swapQuote.network === "Mainnet" && chainId !== 25 && (
+                      {message.swapQuote.network === "Mainnet" && (
                         <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-start gap-2">
                           <span className="text-yellow-400 text-lg">⚠️</span>
                           <div className="flex-1">
-                            <p className="text-xs font-medium text-yellow-300 mb-1">Network Mismatch</p>
+                            <p className="text-xs font-medium text-yellow-300 mb-1">EVM Swap</p>
                             <p className="text-xs text-yellow-200/80">
-                              This swap requires Cronos Mainnet (Chain ID: 25). Your wallet is on Chain ID {chainId}. You'll be prompted to switch when you click execute.
+                              This swap was generated for Cronos {message.swapQuote.network}. EVM token swaps are not yet migrated to Solana.
                             </p>
                           </div>
                         </div>
@@ -717,72 +584,21 @@ export default function ChatPage() {
 
                       <button
                         onClick={() => {
-                          console.log("[Swap] Button clicked", {
-                            swapTx: message.swapTransaction,
-                            swapQuote: message.swapQuote,
-                            chainId,
-                            network: message.swapQuote?.network,
-                            isConnected,
-                            isSwapPending,
-                            isSwapConfirming,
-                          });
                           executeSwap(message.swapTransaction!, message.swapQuote);
                         }}
-                        disabled={
-                          isSwapPending || 
-                          isSwapConfirming || 
-                          !isConnected
-                        }
-                        className="w-full px-4 py-3 bg-gradient-to-r from-green-600 via-green-500 to-green-600 hover:from-green-500 hover:via-green-400 hover:to-green-500 disabled:from-neutral-800 disabled:via-neutral-800 disabled:to-neutral-800 disabled:opacity-50 text-white rounded-lg font-semibold transition-all duration-200 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 hover:shadow-green-500/30 disabled:shadow-none transform hover:scale-[1.02] disabled:transform-none"
+                        disabled={!isConnected}
+                        className="w-full px-4 py-3 bg-gradient-to-r from-green-600 via-green-500 to-green-600 hover:from-green-500 hover:via-green-400 hover:to-green-500 disabled:from-neutral-800 disabled:via-neutral-800 disabled:to-neutral-800 disabled:opacity-50 text-white rounded-lg font-semibold transition-all duration-200 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         title={
                           !isConnected
                             ? "Connect your wallet first"
-                            : isSwapPending || isSwapConfirming
-                            ? "Transaction in progress..."
                             : undefined
                         }
                       >
-                        {isSwapPending ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span>Signing Transaction...</span>
-                          </>
-                        ) : isSwapConfirming ? (
-                          <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            <span>Confirming on Blockchain...</span>
-                          </>
-                        ) : isSwapConfirmed ? (
-                          <>
-                            <span className="text-lg">✓</span>
-                            <span>Swap Executed Successfully</span>
-                          </>
-                        ) : (
-                          <>
-                            <ArrowRightLeft className="h-5 w-5" />
-                            <span>Sign & Execute Swap</span>
-                          </>
-                        )}
+                        <>
+                          <ArrowRightLeft className="h-5 w-5" />
+                          <span>EVM Swap (Coming Soon)</span>
+                        </>
                       </button>
-                      
-                      {swapTxHash && (
-                        <div className="mt-3 pt-3 border-t border-neutral-800/50">
-                          <a
-                            href={`https://explorer.cronos.org/${message.swapQuote.network === "Mainnet" ? "" : "testnet/"}tx/${swapTxHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 text-xs text-green-400 hover:text-green-300 transition-colors group"
-                          >
-                            <span>View Transaction</span>
-                            <span className="font-mono text-neutral-400 group-hover:text-green-400 transition-colors">
-                              {swapTxHash.slice(0, 8)}...{swapTxHash.slice(-6)}
-                            </span>
-                            <svg className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                          </a>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -1008,11 +824,11 @@ export default function ChatPage() {
         <div className="container mx-auto px-4 py-4 max-w-4xl">
           {showPayment ? (
             <div className="mb-4">
-              <X402Payment
+              <SolanaPayment
                 priceUsd={CHAT_PRICE}
                 agentId={1} // Use agent #1 for payment tracking
                 onPaymentComplete={handlePaymentComplete}
-                onError={handlePaymentError}
+                onError={(error) => setPaymentError(error)}
               />
               {pendingMessage && (
                 <p className="text-sm text-neutral-400 mt-2 text-center">
