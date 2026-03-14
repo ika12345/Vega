@@ -165,7 +165,7 @@ export default function Home() {
                 ElectroVault
               </h1>
               <p className="text-sm text-neutral-400 mt-1">
-                First Web3-native AI agent marketplace on Cronos
+                First Web3-native AI agent marketplace on Solana
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -196,10 +196,10 @@ export default function Home() {
                 Ask anything in plain English - system automatically routes to the right tools
               </p>
               <p className="text-sm text-neutral-400 mb-2">
-                Market data • Blockchain queries • Contract analysis • Content generation • VVS swaps
+                Market data • Blockchain queries • Contract analysis • Content generation
               </p>
               <p className="text-xs text-neutral-500">
-                Powered by Crypto.com Market Data MCP Server, AI Agent SDK, and x402 micropayments ($0.10 per message)
+                Powered by Gemini AI and SOL micropayments (0.01 SOL per message)
               </p>
             </div>
             <a
@@ -224,7 +224,7 @@ export default function Home() {
                 Smart Contract Analyzer • Market Data Agent • Content Generator • Portfolio Analyzer
               </p>
               <p className="text-xs text-neutral-500">
-                  First agent marketplace with on-chain registry and x402 micropayments on Cronos
+                  First agent marketplace with Solana-verified payments and on-chain transaction proof
               </p>
             </div>
             <a
@@ -243,10 +243,10 @@ export default function Home() {
             Individual Agents Marketplace
           </h2>
           <p className="text-sm md:text-base text-neutral-400 mb-2">
-            Browse specialized AI agents registered on Cronos blockchain. All agents tracked on-chain with transparent metrics.
+            Browse specialized AI agents. Every execution verified on Solana with transparent metrics.
           </p>
           <p className="text-xs text-neutral-500 mb-4">
-            Each agent execution requires x402 payment. Developers earn 90% of payment, platform takes 10% fee. All automatic, all transparent.
+            Each agent execution requires a SOL payment (0.01 SOL). Developers earn 90% of payment, platform takes 10% fee.
           </p>
 
           {/* Search and Filter */}
@@ -305,9 +305,9 @@ export default function Home() {
               
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-neutral-800">
                 <div>
-                  <div className="text-xs text-neutral-500 mb-1">Price (x402)</div>
+                  <div className="text-xs text-neutral-500 mb-1">Price (SOL)</div>
                   <div className="text-lg font-bold text-neutral-50">
-                    ${agent.price}
+                    {agent.price} SOL
                   </div>
                   <div className="text-xs text-neutral-500 mt-0.5">per execution</div>
                 </div>

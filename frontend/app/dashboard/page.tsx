@@ -176,7 +176,7 @@ export default function DashboardPage() {
             <div className="text-3xl font-bold text-green-500">
               ${platformStats?.totalRevenue ?? "0.00"}
             </div>
-            <p className="text-xs text-neutral-500 mt-1">USDC earned</p>
+            <p className="text-xs text-neutral-500 mt-1">SOL earned</p>
           </div>
 
           <div className="bg-neutral-900 rounded-lg border border-neutral-800 p-6">

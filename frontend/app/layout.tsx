@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "ElectroVault - AI Agent Marketplace on Cronos",
-  description: "ElectroVault — Pay-per-use AI Agents powered by x402 micropayments on Cronos.",
+  title: "ElectroVault - AI Agent Marketplace on Solana",
+  description: "ElectroVault — Pay-per-use AI Agents powered by SOL micropayments on Solana.",
 };
 
 import { FundingAssistant } from "@/components/FundingAssistant";

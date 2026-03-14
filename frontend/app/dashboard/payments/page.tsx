@@ -217,7 +217,7 @@ export default function PaymentsPage() {
             <div className="text-3xl font-bold text-green-500">
               ${totalRevenue.toFixed(2)}
             </div>
-            <p className="text-xs text-neutral-500 mt-1">USDC earned</p>
+            <p className="text-xs text-neutral-500 mt-1">SOL earned</p>
           </div>
 
           <div className="bg-neutral-900 rounded-lg border border-neutral-800 p-6">
@@ -285,12 +285,12 @@ export default function PaymentsPage() {
                       </p>
                       {payment.transactionHash && (
                         <a
-                          href={`https://explorer.cronos.org/testnet/tx/${payment.transactionHash}`}
+                          href={`https://explorer.solana.com/tx/${payment.transactionHash}?cluster=devnet`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-400 hover:text-blue-300 mt-1 inline-flex items-center gap-1"
                         >
-                          View on Cronos Explorer <ExternalLink className="h-3 w-3" />
+                          View on Solana Explorer <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
                     </div>
@@ -363,7 +363,7 @@ export default function PaymentsPage() {
         <div className="mt-6 p-4 bg-neutral-900 rounded-lg border border-neutral-800">
           <p className="text-sm text-neutral-400">
             💡 <strong>Note:</strong> Payment data is calculated from on-chain agent execution records. 
-            All payments are settled via x402 protocol on Cronos testnet.
+            All payments are verified via Solana transactions on devnet.
           </p>
         </div>
       </div>

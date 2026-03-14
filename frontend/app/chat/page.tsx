@@ -352,7 +352,7 @@ export default function ChatPage() {
                     alert("Please connect your wallet first");
                     return;
                   }
-                  sendMessageWithInput("swap 100 CRO for USDC");
+                  sendMessageWithInput("swap 100 SOL for USDC");
                 }}
                 disabled={executing || !isConnected}
                 className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
@@ -361,7 +361,7 @@ export default function ChatPage() {
                   <ArrowRightLeft className="h-5 w-5 text-purple-400" />
                   <h3 className="font-bold text-purple-400">Swap Tokens</h3>
                 </div>
-                <p className="text-sm text-neutral-400">"swap 100 CRO for USDC"</p>
+                <p className="text-sm text-neutral-400">"swap 100 SOL for USDC"</p>
               </button>
               <button
                 onClick={() => {
@@ -369,7 +369,7 @@ export default function ChatPage() {
                     alert("Please connect your wallet first");
                     return;
                   }
-                  sendMessageWithInput("transfer 10 USDC to");
+                  sendMessageWithInput("transfer 10 SOL to");
                 }}
                 disabled={executing || !isConnected}
                 className="p-4 bg-neutral-900 rounded-lg border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
@@ -378,7 +378,7 @@ export default function ChatPage() {
                   <Send className="h-5 w-5 text-orange-400" />
                   <h3 className="font-bold text-orange-400">Transfer Funds</h3>
                 </div>
-                <p className="text-sm text-neutral-400">"transfer 10 USDC to"</p>
+                <p className="text-sm text-neutral-400">"transfer 10 SOL to"</p>
               </button>
               <button
                 onClick={() => {
@@ -560,7 +560,7 @@ export default function ChatPage() {
                         <div className="pt-3 border-t border-neutral-800/50">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-neutral-400">Network</span>
-                            <span className="text-neutral-300 font-medium">Cronos {message.swapQuote.network}</span>
+                            <span className="text-neutral-300 font-medium">Solana {message.swapQuote.network}</span>
                           </div>
                           <div className="flex items-center justify-between text-xs mt-1.5">
                             <span className="text-neutral-400">Execution Cost</span>
@@ -576,7 +576,7 @@ export default function ChatPage() {
                           <div className="flex-1">
                             <p className="text-xs font-medium text-yellow-300 mb-1">EVM Swap</p>
                             <p className="text-xs text-yellow-200/80">
-                              This swap was generated for Cronos {message.swapQuote.network}. EVM token swaps are not yet migrated to Solana.
+                              This swap was generated for Solana {message.swapQuote.network}. Token swaps coming soon.
                             </p>
                           </div>
                         </div>
@@ -680,7 +680,7 @@ export default function ChatPage() {
                           <Wallet className="h-3 w-3" />
                           <span>Wallet: </span>
                           <a
-                            href={`https://explorer.cronos.org/testnet/address/${message.portfolio.address}`}
+                            href={`https://explorer.solana.com/address/${message.portfolio.address}?cluster=devnet`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="font-mono text-purple-400 hover:text-purple-300 flex items-center gap-1"
@@ -731,7 +731,7 @@ export default function ChatPage() {
                           <Wallet className="h-3 w-3" />
                           <span>Wallet: </span>
                           <a
-                            href={`https://explorer.cronos.org/testnet/address/${message.transactionHistory.address}`}
+                            href={`https://explorer.solana.com/address/${message.transactionHistory.address}?cluster=devnet`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="font-mono text-green-400 hover:text-green-300 flex items-center gap-1"
@@ -744,7 +744,7 @@ export default function ChatPage() {
                           <div key={idx} className="p-3 bg-black/30 rounded-lg border border-green-800/30 hover:border-green-700/50 transition-colors">
                             <div className="flex items-center justify-between mb-3">
                               <a
-                                href={`https://explorer.cronos.org/testnet/tx/${tx.hash}`}
+                                href={`https://explorer.solana.com/tx/${tx.hash}?cluster=devnet`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs font-mono text-green-400 hover:text-green-300 flex items-center gap-1.5 font-semibold"
@@ -755,7 +755,7 @@ export default function ChatPage() {
                               </a>
                               {tx.blockNumber > 0 && (
                                 <a
-                                  href={`https://explorer.cronos.org/testnet/block/${tx.blockNumber}`}
+                                  href={`https://explorer.solana.com/block/${tx.blockNumber}?cluster=devnet`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-xs text-green-400/60 hover:text-green-300 flex items-center gap-1"
@@ -784,12 +784,12 @@ export default function ChatPage() {
                         {message.transactionHistory.transactions.length > 5 && (
                           <div className="text-center pt-2">
                             <a
-                              href={`https://explorer.cronos.org/testnet/address/${message.transactionHistory.address}`}
+                              href={`https://explorer.solana.com/address/${message.transactionHistory.address}?cluster=devnet`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-green-400 hover:text-green-300 flex items-center justify-center gap-1"
                             >
-                              View all transactions on Cronos Explorer
+                              View all transactions on Solana Explorer
                               <ExternalLink className="h-3 w-3" />
                             </a>
                           </div>
@@ -869,7 +869,7 @@ export default function ChatPage() {
                 </p>
               )}
               <p className="text-xs text-neutral-500 mt-2 text-center">
-                ${CHAT_PRICE} per message • x402 micropayment
+                ${CHAT_PRICE} per message • SOL micropayment
               </p>
             </>
           )}
