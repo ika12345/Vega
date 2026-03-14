@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "OneChat - One Chat. Multiple Superpowers.",
-  description: "Ask anything. Get real answers. Execute actions. All in one chat. Built on Cronos with x402 micropayments.",
+  title: "ElectroVault - AI Agent Marketplace on Cronos",
+  description: "ElectroVault — Pay-per-use AI Agents powered by x402 micropayments on Cronos.",
 };
 
 export default async function RootLayout({

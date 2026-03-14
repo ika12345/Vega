@@ -9,12 +9,12 @@ import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi'
 const queryClient = new QueryClient()
 
 if (!projectId) {
-  throw new Error('Project ID is not defined')
+  console.warn('WalletConnect Project ID is not defined. Wallet connection features will be limited. Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in .env.local')
 }
 
 const metadata = {
-  name: "OneChat",
-  description: "One Chat. Multiple Superpowers.",
+  name: "ElectroVault",
+  description: "Pay-per-use AI Agents powered by x402 micropayments on Cronos.",
   url: typeof window !== 'undefined' ? window.location.origin : "https://onechat.app",
   icons: ["https://avatars.githubusercontent.com/u/179229932"]
 }

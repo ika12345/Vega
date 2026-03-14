@@ -1,8 +1,8 @@
-# OneChat
+# ElectroVault
 
 Unified Web3 chat assistant and AI agent marketplace. Ask anything in plain English, or browse specialized AI agents. Built on Cronos with x402 micropayments.
 
-## What Makes OneChat Unique
+## What Makes ElectroVault Unique
 
 **1. On-Chain Agent Registry (First on Cronos)**
 - Unlike other marketplaces that use databases, all agents registered on Cronos blockchain
@@ -50,11 +50,11 @@ Simple tasks like "swap tokens and check my portfolio" require 15+ minutes acros
 
 **Mike (Crypto Trader):** He wants to ask "What's my balance and swap 100 CRO for USDC" in one place. But he needs to use 3 different tools. Check balance on Cronoscan. Swap on VVS. Each tool requires manual navigation. Each requires understanding the interface. Why can't he just ask in plain English?
 
-**Lisa (The "No-Coiner"):** Lisa hears about crypto but has never used it. She doesn't know what a "DEX" is. She doesn't know how to set "slippage tolerance". She doesn't understand "gas fees" or "contract addresses". She just wants to save money and maybe try crypto. In OneChat, she connects her wallet (one click), then simply types: *"What is USDC and how do I get some?"* The AI explains what USDC is in plain English, shows her the current price, and guides her step-by-step—all for just $0.10. When she's ready, she asks: *"Swap 50 CRO for USDC"* and the system handles all the technical details automatically—no need to understand slippage, gas fees, or DEX interfaces. She just signs the transaction in her wallet. She uses Web3 without ever needing to "learn" Web3 jargon.
+**Lisa (The "No-Coiner"):** Lisa hears about crypto but has never used it. She doesn't know what a "DEX" is. She doesn't know how to set "slippage tolerance". She doesn't understand "gas fees" or "contract addresses". She just wants to save money and maybe try crypto. In ElectroVault, she connects her wallet (one click), then simply types: *"What is USDC and how do I get some?"* The AI explains what USDC is in plain English, shows her the current price, and guides her step-by-step—all for just $0.10. When she's ready, she asks: *"Swap 50 CRO for USDC"* and the system handles all the technical details automatically—no need to understand slippage, gas fees, or DEX interfaces. She just signs the transaction in her wallet. She uses Web3 without ever needing to "learn" Web3 jargon.
 
-**Alex (Web3 Enthusiast):** Before OneChat, he spent 20 minutes every morning checking prices, balances, and recent transactions across 4 different apps. CoinGecko for prices. Cronoscan for balances. VVS for swaps. Wallet for transfers. Each morning. Every day. 20 minutes wasted on tool switching.
+**Alex (Web3 Enthusiast):** Before ElectroVault, he spent 20 minutes every morning checking prices, balances, and recent transactions across 4 different apps. CoinGecko for prices. Cronoscan for balances. VVS for swaps. Wallet for transfers. Each morning. Every day. 20 minutes wasted on tool switching.
 
-OneChat solves this. One chat. Multiple superpowers. Ask in plain English. Get real answers. Execute actions. All in one place. No app switching. No manual tool selection. Just ask. Get results.
+ElectroVault solves this. ElectroVault. Multiple superpowers. Ask in plain English. Get real answers. Execute actions. All in one place. No app switching. No manual tool selection. Just ask. Get results.
 
 ## Why Micropayments Make Sense for Paid Prompting
 
@@ -122,9 +122,9 @@ Step six: Try VVS Finance swap. Go to `/chat`. Ask "Swap 100 CRO for USDC on mai
 
 Step seven: Create your own agent. Go to `/dashboard`. Click "Create Agent". Fill name, description, price. Register on-chain. Agent appears in marketplace. Earn revenue from executions.
 
-## Two Ways to Use OneChat
+## Two Ways to Use ElectroVault
 
-OneChat offers two powerful, equally important modes:
+ElectroVault offers two powerful, equally important modes:
 
 ### Unified Chat Interface
 
@@ -362,7 +362,7 @@ Payment Notes:
 
 ## Built for Hackathon
 
-OneChat built for Cronos x402 Paytech Hackathon. Qualifies for **Track 1 (x402 Applications)** and **Track 3 (Crypto.com X Cronos Ecosystem)**.
+ElectroVault built for Cronos x402 Paytech Hackathon. Qualifies for **Track 1 (x402 Applications)** and **Track 3 (Crypto.com X Cronos Ecosystem)**.
 
 ### Track 1 - x402 Applications (Primary Track)
 

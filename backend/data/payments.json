@@ -1298,5 +1298,85 @@
     "status": "pending",
     "timestamp": 1769072516966,
     "executionId": 1035293426
+  },
+  {
+    "paymentHash": "0x839a24f7cd38f1a1a01e2ac28df2cb71e366b5e681f39c19067739a988b31558",
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.1,
+    "status": "pending",
+    "timestamp": 1773478863429,
+    "executionId": 0
+  },
+  {
+    "paymentHash": "0x6d3d8c6320ffcd60e969272a55ef91c58bb1d3c0aefcc0b51095e6616e2a20d9",
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.1,
+    "status": "pending",
+    "timestamp": 1773479282042,
+    "executionId": 0
+  },
+  {
+    "paymentHash": "0xdaeff67020c8d0215794a75c02f30bced6c3db91996d52d8caa1767f82b49786",
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.1,
+    "status": "pending",
+    "timestamp": 1773482190444,
+    "executionId": 0
+  },
+  {
+    "paymentHash": "0x83437ae2242ffa958ad6725c13f03594c4e66cf17be8ef071f8aec52e488790c",
+    "agentId": 1,
+    "agentName": "Unified Chat Agent",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.25,
+    "status": "settled",
+    "timestamp": 1773482407157,
+    "executionId": 130310867
+  },
+  {
+    "paymentHash": "0x332cab8f87f30d8f3ffce13fc8ad552de5a826b14d99168d7905aa4021ec3888",
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.1,
+    "status": "pending",
+    "timestamp": 1773486706162,
+    "executionId": 0
+  },
+  {
+    "paymentHash": "0x018c1508eea93367379f989ed7ddbf20fb939719764e6b0a8ad55d34f17889c7",
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.1,
+    "status": "pending",
+    "timestamp": 1773486763904,
+    "executionId": 0
+  },
+  {
+    "paymentHash": "0x09b2fbab428f03d82fe008edeb37299dca163a45789468fbc4d7a98a1cd646ad",
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.1,
+    "status": "pending",
+    "timestamp": 1773486801272,
+    "executionId": 0
+  },
+  {
+    "paymentHash": "0x9cf781e0d9548fea37fdd0d689022e60e7b8bd9c249d142ee2f9058ed673438a",
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "amount": 0.1,
+    "status": "pending",
+    "timestamp": 1773488240183,
+    "executionId": 0
   }
 ]

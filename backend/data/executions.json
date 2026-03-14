@@ -1534,5 +1534,101 @@
     "success": true,
     "timestamp": 1769072423168,
     "verified": false
+  },
+  {
+    "executionId": 1773478877085,
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0x839a24f7cd38f1a1a01e2ac28df2cb71e366b5e681f39c19067739a988b31558",
+    "input": "hii",
+    "output": "Hello! I'm specialized in analyzing Solidity contracts for vulnerabilities and security issues. I can help you with questions related to smart contract security, potential exploits, best practices, and code reviews.\n\nHow can I assist you with Solidity contract security today?",
+    "success": true,
+    "timestamp": 1773478877085,
+    "verified": false
+  },
+  {
+    "executionId": 1773479293248,
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0x6d3d8c6320ffcd60e969272a55ef91c58bb1d3c0aefcc0b51095e6616e2a20d9",
+    "input": "hii",
+    "output": "I'm specialized in Analyzes Solidity contracts for vulnerabilities and security issues. I can help you with questions related to that, but not with general greetings or unrelated topics.\n\nPlease let me know if you have a Solidity contract you'd like me to analyze for potential security issues or vulnerabilities.",
+    "success": true,
+    "timestamp": 1773479293248,
+    "verified": false
+  },
+  {
+    "executionId": 1773482199911,
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0xdaeff67020c8d0215794a75c02f30bced6c3db91996d52d8caa1767f82b49786",
+    "input": "hii",
+    "output": "I'm specialized in Analyzes Solidity contracts for vulnerabilities and security issues. I can help you with questions related to that, but not with general greetings or unrelated topics.\n\nPlease let me know if you have any Solidity contracts you'd like me to analyze for security issues or vulnerabilities!",
+    "success": true,
+    "timestamp": 1773482199911,
+    "verified": false
+  },
+  {
+    "executionId": 130310867,
+    "agentId": 1,
+    "agentName": "Unified Chat Agent",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0x83437ae2242ffa958ad6725c13f03594c4e66cf17be8ef071f8aec52e488790c",
+    "input": "hello",
+    "output": "Hello! How can I help you today?",
+    "success": true,
+    "timestamp": 1773482409100,
+    "verified": false
+  },
+  {
+    "executionId": 1773486718862,
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0x332cab8f87f30d8f3ffce13fc8ad552de5a826b14d99168d7905aa4021ec3888",
+    "input": "swap 10 CRO for usdc",
+    "output": "I'm specialized in Analyzes Solidity contracts for vulnerabilities and security issues. I can help you with questions related to identifying security flaws, potential exploits, or design vulnerabilities within Solidity smart contracts, but not with executing cryptocurrency swaps.",
+    "success": true,
+    "timestamp": 1773486718862,
+    "verified": false
+  },
+  {
+    "executionId": 1773486774830,
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0x018c1508eea93367379f989ed7ddbf20fb939719764e6b0a8ad55d34f17889c7",
+    "input": "what is the price of bitcoin right now",
+    "output": "I'm specialized in Analyzing Solidity contracts for vulnerabilities and security issues. I can help you with questions related to that, but not with the current price of Bitcoin.",
+    "success": true,
+    "timestamp": 1773486774830,
+    "verified": false
+  },
+  {
+    "executionId": 1773486812645,
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0x09b2fbab428f03d82fe008edeb37299dca163a45789468fbc4d7a98a1cd646ad",
+    "input": "show my portfolio",
+    "output": "I'm specialized in Analyzes Solidity contracts for vulnerabilities and security issues. I can help you with questions related to that, but not with showing your portfolio.",
+    "success": true,
+    "timestamp": 1773486812645,
+    "verified": false
+  },
+  {
+    "executionId": 1773488252049,
+    "agentId": 2,
+    "agentName": "Smart Contract Analyzer",
+    "userId": "0xCf23e6D961035e30C8Bb41AB404E1a2F89912c98",
+    "paymentHash": "0x9cf781e0d9548fea37fdd0d689022e60e7b8bd9c249d142ee2f9058ed673438a",
+    "input": "hii",
+    "output": "I'm specialized in analyzing Solidity contracts for vulnerabilities and security issues. I can help you with questions related to that, but not with general greetings or unrelated topics.\n\nPlease let me know if you have a Solidity contract you'd like me to analyze for security issues.",
+    "success": true,
+    "timestamp": 1773488252049,
+    "verified": false
   }
 ]

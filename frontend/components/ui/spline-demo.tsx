@@ -18,7 +18,7 @@ export function SplineSceneBasic() {
         {/* Left content */}
         <div className="flex-1 p-8 flex flex-col justify-center relative z-10">
           <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
-            OneChat
+            ElectroVault
           </h1>
           <p className="mt-2 text-sm text-neutral-400 font-medium">
             First Web3-native AI agent marketplace on Cronos
@@ -37,10 +37,11 @@ export function SplineSceneBasic() {
 
         {/* Right content */}
         <div className="flex-1 relative z-10">
-          <SplineScene 
+          {/* Temporarily removed robot component as requested */}
+          {/* <SplineScene 
             scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
             className="w-full h-full"
-          />
+          /> */}
         </div>
       </div>
     </Card>

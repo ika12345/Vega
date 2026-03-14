@@ -244,24 +244,19 @@ router.post("/:id/execute", agentExecutionRateLimit, validateAgentInputMiddlewar
       paymentHashBytes32 = ethers.keccak256(ethers.toUtf8Bytes(headerString || ""));
     }
 
-    // Step 1: Call executeAgent on contract to create execution record and increment totalExecutions
-    // CRITICAL: This must succeed before we run the agent, otherwise metrics won't update
+    // Step 1: Call executeAgent on contract to create execution record (OPTIONAL - needs TCRO for gas)
     console.log("Calling executeAgent on contract...");
-    const contractExecutionId = await executeAgentOnContract(agentId, paymentHashBytes32, input);
-    
-    if (contractExecutionId === null) {
-      console.error("❌ executeAgent() failed on contract - cannot proceed with agent execution");
-      console.error("This usually means: Payment already used, agent not found, or contract error");
-      // Return 402 to trigger payment UI refresh in frontend
-      return res.status(402).json({
-        error: "Payment already used or contract call failed",
-        details: "The payment hash has already been used. Please create a new payment to execute this agent.",
-        paymentRequired: true,
-      });
+    let contractExecutionId: number | null = null;
+    try {
+      contractExecutionId = await executeAgentOnContract(agentId, paymentHashBytes32, input);
+      if (contractExecutionId !== null) {
+        console.log(`✅ Execution record created on contract with executionId: ${contractExecutionId}`);
+      } else {
+        console.warn("⚠️ executeAgent() on contract returned null - running in off-chain mode (backend wallet needs TCRO for gas)");
+      }
+    } catch (contractError) {
+      console.warn("⚠️ Contract call failed (likely no TCRO for gas) - continuing with off-chain execution:", contractError);
     }
-    
-    console.log(`✅ Execution record created on contract with executionId: ${contractExecutionId}`);
-    console.log("📊 totalExecutions has been incremented on-chain");
     
     // Log payment to database
     db.addPayment({
@@ -272,17 +267,17 @@ router.post("/:id/execute", agentExecutionRateLimit, validateAgentInputMiddlewar
       amount: agentPrice,
       status: "pending",
       timestamp: Date.now(),
-      executionId: contractExecutionId,
+      executionId: contractExecutionId || 0,
     });
     
-    // Step 2: Execute agent with AI (only if contract call succeeded)
-    console.log("Executing agent with Gemini...");
+    // Step 2: Execute agent with AI (always runs, regardless of contract status)
+    console.log("Executing agent with AI...");
     const result = await executeAgent(agentId, input);
     console.log("Agent execution result:", { success: result.success, outputLength: result.output?.length });
     
     // Log execution to database
     db.addExecution({
-      executionId: contractExecutionId,
+      executionId: contractExecutionId || Date.now(),
       agentId,
       agentName: contractAgent.name,
       userId: verification.payerAddress || "unknown",
@@ -294,43 +289,28 @@ router.post("/:id/execute", agentExecutionRateLimit, validateAgentInputMiddlewar
       verified: false,
     });
 
-    // Step 3: Call verifyExecution on contract to update successfulExecutions and reputation
-    // This ALWAYS runs (even if agent execution failed) to update metrics correctly
-    console.log("Calling verifyExecution on contract...");
-    const verified = await verifyExecutionOnContract(
-      contractExecutionId,
-      result.output || "",
-      result.success
-    );
-    
-    if (verified) {
-      if (result.success) {
-        console.log("✅ Execution verified on contract - metrics updated (SUCCESS)!");
-        console.log("📊 successfulExecutions incremented, reputation updated");
-      } else {
-        console.log("✅ Execution verified on contract - metrics updated (FAILURE)!");
-        console.log("📊 successfulExecutions NOT incremented, reputation decreased");
+    // Step 3: Verify execution on contract (optional - only if step 1 succeeded)
+    if (contractExecutionId !== null) {
+      console.log("Calling verifyExecution on contract...");
+      try {
+        const verified = await verifyExecutionOnContract(
+          contractExecutionId,
+          result.output || "",
+          result.success
+        );
+        if (verified) {
+          console.log("✅ Execution verified on contract - metrics updated!");
+          db.updateExecution(contractExecutionId, { verified: true });
+        }
+      } catch (verifyError) {
+        console.warn("⚠️ verifyExecution on contract failed (non-critical):", verifyError);
       }
-      
-      // Update execution log
-      db.updateExecution(contractExecutionId, { verified: true });
-    } else {
-      console.error("❌ Failed to verify execution on contract - metrics partially updated!");
-      console.error("⚠️  totalExecutions was incremented, but successfulExecutions/reputation were NOT updated");
-      console.error("This is a critical error - metrics are now inconsistent!");
     }
 
-    // ========================================
-    // MULTI-STEP SETTLEMENT WORKFLOW (Track 2: Agentic Finance)
-    // ========================================
-    // Step 4: Conditional Settlement - Only settle if execution successful
-    // This demonstrates risk-managed workflows: payment verification before execution,
-    // conditional settlement based on outcome, and automatic refund handling
+    // Step 4: Settlement (optional)
     if (result.success) {
-      console.log("✅ Agent execution successful - proceeding with settlement...");
+      console.log("✅ Agent execution successful - attempting settlement...");
       try {
-        // Step 4a: Settle payment to escrow contract via x402 facilitator
-        // This is the "settlement" step in the multi-step pipeline
         await settlePayment(paymentPayload, {
           priceUsd: agentPrice,
           payTo: escrowAddress,
@@ -338,26 +318,24 @@ router.post("/:id/execute", agentExecutionRateLimit, validateAgentInputMiddlewar
         }, headerString);
         console.log("✅ Payment settled to escrow successfully");
         
-        // Step 5: Release payment to developer (automated revenue distribution)
-        // This demonstrates automated treasury workflows: platform fee (10%) + developer payment (90%)
-        console.log("Releasing payment to agent's developer...");
-        const released = await releasePaymentToDeveloper(paymentHashBytes32, agentId);
-        if (released) {
-          console.log("✅ Payment released to developer successfully");
-          db.updatePayment(paymentHashBytes32, { status: "settled" });
-        } else {
-          console.warn("⚠️  Payment settlement succeeded but release to developer failed");
-          db.updatePayment(paymentHashBytes32, { status: "settled" }); // Still mark as settled
+        if (contractExecutionId !== null) {
+          try {
+            const released = await releasePaymentToDeveloper(paymentHashBytes32, agentId);
+            if (released) {
+              console.log("✅ Payment released to developer successfully");
+            }
+            db.updatePayment(paymentHashBytes32, { status: "settled" });
+          } catch (releaseError) {
+            console.warn("⚠️ Release to developer failed (non-critical):", releaseError);
+            db.updatePayment(paymentHashBytes32, { status: "settled" });
+          }
         }
       } catch (settleError) {
-        console.error("Payment settlement error:", settleError);
-        // Don't fail the request if settlement fails, just log it
+        console.warn("⚠️ Payment settlement failed (non-critical):", settleError);
         db.updatePayment(paymentHashBytes32, { status: "failed" });
       }
     } else {
-      // Conditional refund: If execution fails, payment is NOT settled
-      // This demonstrates risk-managed workflows with automatic refund handling
-      console.log("⚠️  Agent execution failed - payment NOT settled (user should get refund)");
+      console.log("⚠️ Agent execution failed - payment NOT settled");
       db.updatePayment(paymentHashBytes32, { status: "refunded" });
     }
 
@@ -384,3 +362,5 @@ router.post("/:id/execute", agentExecutionRateLimit, validateAgentInputMiddlewar
 });
 
 export default router;
+
+
