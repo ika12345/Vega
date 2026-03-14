@@ -182,7 +182,7 @@ export default function AgentDetail() {
               <div className="h-6 w-px bg-neutral-700"></div>
               <div>
                 <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
-                  ElectroVault
+                  Vega
                 </h1>
               </div>
             </div>

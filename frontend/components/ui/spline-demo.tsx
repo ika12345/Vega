@@ -16,7 +16,7 @@ export function SplineSceneBasic() {
       <div className="relative z-10 py-16 md:py-24 px-8">
         <div className="flex flex-col items-center text-center max-w-2xl mx-auto">
           <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
-            ElectroVault
+            Vega
           </h1>
           <p className="mt-3 text-base md:text-lg text-neutral-400 font-medium">
             First Web3-native AI agent marketplace on Solana

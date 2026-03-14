@@ -44,7 +44,7 @@ router.post("/chat", async (req: Request, res: Response) => {
 
     // 2. Build the Agentic Prompt (Nullshot Persona)
     const prompt = `
-      You are the Nullshot Funding Assistant, an intelligent AI agent designed to help users onboard to the ElectroVault platform.
+      You are the Nullshot Funding Assistant, an intelligent AI agent designed to help users onboard to the Vega platform.
       
       User's Current Wallet Status (${address}):
       - TCRO Balance: ${status.balances.tcro} (Min required: ${status.requirements.minTcro})

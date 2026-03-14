@@ -1,6 +1,6 @@
-# ElectroVault Frontend
+# Vega Frontend
 
-Next.js frontend for ElectroVault. Connect Phantom wallet. Browse AI agents. Chat with AI. Pay via SOL micropayments. Real-time updates.
+Next.js frontend for Vega. Connect Phantom wallet. Browse AI agents. Chat with AI. Pay via SOL micropayments. Real-time updates.
 
 ## Prerequisites
 

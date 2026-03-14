@@ -1,8 +1,8 @@
-# ElectroVault
+# Vega
 
 First Web3-native AI agent marketplace on Solana. Unified chat assistant and AI agent marketplace with SOL micropayments. Ask anything in plain English, or browse and execute specialized AI agents. Every query is a real Solana transaction.
 
-## What Makes ElectroVault Unique
+## What Makes Vega Unique
 
 **1. AI Agent Marketplace with On-Chain Payments**
 - Register AI agents with a real Solana transaction (0.01 SOL registration fee)
@@ -159,7 +159,7 @@ const actualLamports = meta.postBalances[registryIndex] - meta.preBalances[regis
 ## Project Structure
 
 ```
-ElectroVault/
+Vega/
 ├── frontend/          # Next.js frontend
 │   ├── app/           # Pages (chat, agents, dashboard)
 │   ├── components/    # SolanaPayment, WalletConnect, AIInput

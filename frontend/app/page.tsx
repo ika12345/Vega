@@ -162,7 +162,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
-                ElectroVault
+                Vega
               </h1>
               <p className="text-sm text-neutral-400 mt-1">
                 First Web3-native AI agent marketplace on Solana

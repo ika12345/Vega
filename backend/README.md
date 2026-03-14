@@ -1,6 +1,6 @@
-# ElectroVault Backend
+# Vega Backend
 
-Node.js backend for ElectroVault. AI agent execution engine. Solana payment verification. REST API. Google Gemini AI. Crypto.com MCP Server integration.
+Node.js backend for Vega. AI agent execution engine. Solana payment verification. REST API. Google Gemini AI. Crypto.com MCP Server integration.
 
 ## What This Backend Does
 
